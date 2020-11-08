@@ -2,18 +2,30 @@ import pytest
 import api_wrapper
 
 def pytest_configure(config):
-    pytest.api_url = config.getoption('--api-url')
     
-    print(pytest.api_url)
+    pytest.api_host = config.getoption('--api-host')
+    
+    pytest.api_port = config.getoption('--api-port')
     
 def pytest_addoption(parser):
-    parser.addoption('--api-url', action='store', default='http://127.0.0.1:8091', help='specify the api url, default value: http://127.0.0.1:8091')
     
-@pytest.fixture
+    parser.addoption('--api-host', action='store', default=None, help='specify the API host')
+    
+    parser.addoption('--api-port', action='store', default=None, help='specify the API port')
+    
+@pytest.fixture(scope='session')
 def api():
-    return api_wrapper.BearAPIWrapper(pytest.api_url)
     
-@pytest.fixture
-def delete_all_bears(api):
-    return api.delete('/bear')
+    return api_wrapper.BearAPIWrapper(host=pytest.api_host, port=pytest.api_port)
     
+@pytest.fixture(scope='session', autouse=True)
+def bears_teardown(api):
+    
+    yield
+    
+    api.delete_all_bears()
+
+@pytest.fixture(scope='function', autouse=True)
+def cleanup_before_test(api):
+    
+    api.delete_all_bears()
